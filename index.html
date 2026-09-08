@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Menu Planner</title>
+<meta name="theme-color" content="#2f6f4f" />
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="icon.svg" />
+<link rel="icon" href="icon.svg" />
+<style>
+  :root {
+    --bg: #f6f5f0;
+    --card: #ffffff;
+    --text: #23291f;
+    --muted: #6b7268;
+    --accent: #2f6f4f;
+    --accent-light: #e4efe7;
+    --danger: #b3441e;
+    --border: #e2e0d8;
+    --fresh: #c96b2f;
+    --flexible: #4d7ea8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding-bottom: 90px;
+  }
+  header {
+    padding: 20px 16px 12px;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 5;
+  }
+  h1 { font-size: 1.3rem; margin: 0 0 2px; }
+  .sub { color: var(--muted); font-size: 0.85rem; }
+  main { padding: 0 16px; max-width: 640px; margin: 0 auto; }
+  .tabs {
+    display: flex;
+    gap: 6px;
+    margin: 14px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab {
+    flex: 1;
+    text-align: center;
+    padding: 10px 4px;
+    font-size: 0.9rem;
+    color: var(--muted);
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+  }
+  .tab.active { color: var(--accent); border-color: var(--accent); font-weight: 600; }
+  .view { display: none; }
+  .view.active { display: block; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 10px;
+  }
+  .row { display: flex; align-items: center; gap: 10px; }
+  .row.between { justify-content: space-between; }
+  label { font-size: 0.85rem; color: var(--muted); display: block; margin-bottom: 4px; }
+  input[type=text], input[type=number], input[type=date], select, textarea {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #fff;
+    font-size: 1rem;
+    color: var(--text);
+    font-family: inherit;
+  }
+  textarea { resize: vertical; min-height: 60px; }
+  button {
+    font-size: 0.95rem;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 14px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-secondary { background: var(--accent-light); color: var(--accent); }
+  .btn-danger { background: #fbeae3; color: var(--danger); }
+  .btn-ghost { background: transparent; color: var(--muted); padding: 6px 8px; }
+  .pill {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 999px;
+  }
+  .pill.fresh { background: #fbe6d6; color: var(--fresh); }
+  .pill.flexible { background: #dbe9f3; color: var(--flexible); }
+
+  .recipe-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .recipe-item:last-child { border-bottom: none; }
+  .recipe-name { font-weight: 600; }
+  .recipe-meta { color: var(--muted); font-size: 0.78rem; margin-top: 2px; }
+  .recipe-notes { color: var(--text); font-size: 0.85rem; margin-top: 6px; white-space: pre-wrap; }
+  .recipe-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .recipe-item { display: flex; flex-direction: column; align-items: stretch; }
+  .recipe-item .row.between { align-items: flex-start; }
+
+  .plan-day { margin-bottom: 10px; }
+  .plan-day .card { display: flex; justify-content: space-between; align-items: center; }
+  .plan-date { font-weight: 700; font-size: 0.95rem; }
+  .plan-date .dow { color: var(--muted); font-weight: 500; font-size: 0.78rem; display: block; }
+  .plan-recipe { text-align: right; }
+  .plan-recipe .name { font-weight: 600; }
+  .empty-slot { color: var(--muted); font-style: italic; font-size: 0.85rem; }
+
+  form.add-form { display: flex; flex-direction: column; gap: 10px; }
+  .form-row { display: flex; gap: 10px; }
+  .form-row > div { flex: 1; }
+
+  .fab-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    display: flex;
+    gap: 10px;
+    max-width: 640px;
+    margin: 0 auto;
+  }
+  .fab-bar button { flex: 1; }
+  .hint { font-size: 0.78rem; color: var(--muted); margin-top: 6px; }
+  .toast {
+    position: fixed;
+    bottom: 80px; left: 50%; transform: translateX(-50%);
+    background: var(--text); color: #fff;
+    padding: 8px 16px; border-radius: 20px;
+    font-size: 0.85rem;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Week Menu</h1>
+  <div class="sub">Random menu picker that respects freshness</div>
+</header>
+
+<main>
+  <div class="tabs">
+    <div class="tab active" data-tab="plan">Plan</div>
+    <div class="tab" data-tab="recipes">Recipes</div>
+  </div>
+
+  <!-- PLAN VIEW -->
+  <div class="view active" id="view-plan">
+    <div class="card">
+      <div class="form-row">
+        <div>
+          <label for="startDate">From</label>
+          <input type="date" id="startDate" />
+        </div>
+        <div>
+          <label for="endDate">To</label>
+          <input type="date" id="endDate" />
+        </div>
+      </div>
+      <div class="hint">Fresh recipes only get placed within 3 days of today; flexible ones can land anywhere.</div>
+    </div>
+    <div id="planList"></div>
+  </div>
+
+  <!-- RECIPES VIEW -->
+  <div class="view" id="view-recipes">
+    <div class="card">
+      <form class="add-form" id="addForm">
+        <div>
+          <label for="recipeName">Recipe name</label>
+          <input type="text" id="recipeName" placeholder="e.g. Grilled salmon with asparagus" required />
+        </div>
+        <div class="form-row">
+          <div>
+            <label for="recipeType">Freshness</label>
+            <select id="recipeType">
+              <option value="fresh">Fresh (needs prep within ~2-3 days)</option>
+              <option value="flexible">Flexible (any day)</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label for="recipeNotes">Notes (ingredients, link, prep steps...)</label>
+          <textarea id="recipeNotes" placeholder="Optional"></textarea>
+        </div>
+        <button type="submit" class="btn-primary">Add recipe</button>
+      </form>
+    </div>
+    <div class="card" id="recipeListCard">
+      <div id="recipeList"></div>
+    </div>
+  </div>
+</main>
+
+<div class="fab-bar" id="planBar">
+  <button class="btn-secondary" id="clearPlanBtn">Clear</button>
+  <button class="btn-primary" id="generateBtn">Generate menu</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const STORAGE_RECIPES = "menuplanner.recipes";
+  const STORAGE_PLAN = "menuplanner.plan";
+  const FRESH_WINDOW_DAYS = 3; // +/- window; only matters forward from today
+
+  let recipes = loadRecipes();
+  let plan = loadPlan();
+
+  function loadRecipes() {
+    try {
+      const raw = localStorage.getItem(STORAGE_RECIPES);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    // seed with a few examples on first run
+    return [
+      { id: cryptoId(), name: "Grilled salmon with asparagus", type: "fresh", notes: "" },
+      { id: cryptoId(), name: "Fresh caprese salad", type: "fresh", notes: "" },
+      { id: cryptoId(), name: "Lentil curry", type: "flexible", notes: "" },
+      { id: cryptoId(), name: "Baked chicken thighs with rice", type: "flexible", notes: "" },
+      { id: cryptoId(), name: "Chili con carne", type: "flexible", notes: "" },
+    ];
+  }
+  function saveRecipes() { localStorage.setItem(STORAGE_RECIPES, JSON.stringify(recipes)); }
+
+  function loadPlan() {
+    try {
+      const raw = localStorage.getItem(STORAGE_PLAN);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return null; // { generatedFor: numDays, days: [{date, recipeId}] }
+  }
+  function savePlan() { localStorage.setItem(STORAGE_PLAN, JSON.stringify(plan)); }
+
+  function cryptoId() {
+    return (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()));
+  }
+
+  // ---------- Tabs ----------
+  document.querySelectorAll(".tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+      tab.classList.add("active");
+      document.getElementById("view-" + tab.dataset.tab).classList.add("active");
+      document.getElementById("planBar").style.display = tab.dataset.tab === "plan" ? "flex" : "none";
+    });
+  });
+
+  // ---------- Recipes CRUD ----------
+  const addForm = document.getElementById("addForm");
+  const addFormBtn = addForm.querySelector("button[type=submit]");
+  let editingId = null;
+
+  addForm.addEventListener("submit", e => {
+    e.preventDefault();
+    const name = document.getElementById("recipeName").value.trim();
+    const type = document.getElementById("recipeType").value;
+    const notes = document.getElementById("recipeNotes").value.trim();
+    if (!name) return;
+
+    if (editingId) {
+      const r = recipes.find(r => r.id === editingId);
+      if (r) { r.name = name; r.type = type; r.notes = notes; }
+      editingId = null;
+      addFormBtn.textContent = "Add recipe";
+      toast("Recipe updated");
+    } else {
+      recipes.push({ id: cryptoId(), name, type, notes });
+      toast("Recipe added");
+    }
+
+    saveRecipes();
+    addForm.reset();
+    renderRecipes();
+  });
+
+  function editRecipe(id) {
+    const r = recipes.find(r => r.id === id);
+    if (!r) return;
+    editingId = id;
+    document.getElementById("recipeName").value = r.name;
+    document.getElementById("recipeType").value = r.type;
+    document.getElementById("recipeNotes").value = r.notes || "";
+    addFormBtn.textContent = "Save changes";
+    document.getElementById("recipeName").scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  function deleteRecipe(id) {
+    recipes = recipes.filter(r => r.id !== id);
+    saveRecipes();
+    if (editingId === id) {
+      editingId = null;
+      addForm.reset();
+      addFormBtn.textContent = "Add recipe";
+    }
+    renderRecipes();
+  }
+
+  function renderRecipes() {
+    const list = document.getElementById("recipeList");
+    if (recipes.length === 0) {
+      list.innerHTML = '<div class="empty-slot">No recipes yet. Add one above.</div>';
+      return;
+    }
+    list.innerHTML = recipes
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map(r => `
+        <div class="recipe-item">
+          <div class="row between">
+            <div>
+              <div class="recipe-name">${escapeHtml(r.name)}</div>
+              <div class="recipe-meta"><span class="pill ${r.type}">${r.type}</span></div>
+            </div>
+            <div class="recipe-actions">
+              <button class="btn-ghost" data-edit="${r.id}">Edit</button>
+              <button class="btn-danger" data-del="${r.id}">Delete</button>
+            </div>
+          </div>
+          ${r.notes ? `<div class="recipe-notes">${escapeHtml(r.notes)}</div>` : ""}
+        </div>
+      `).join("");
+    list.querySelectorAll("[data-del]").forEach(btn => {
+      btn.addEventListener("click", () => deleteRecipe(btn.dataset.del));
+    });
+    list.querySelectorAll("[data-edit]").forEach(btn => {
+      btn.addEventListener("click", () => editRecipe(btn.dataset.edit));
+    });
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  // ---------- Plan generation ----------
+  document.getElementById("generateBtn").addEventListener("click", generatePlan);
+  document.getElementById("clearPlanBtn").addEventListener("click", () => {
+    plan = null;
+    savePlan();
+    renderPlan();
+    toast("Plan cleared");
+  });
+
+  function generatePlan() {
+    const startVal = document.getElementById("startDate").value;
+    const endVal = document.getElementById("endDate").value;
+    if (!startVal || !endVal) {
+      toast("Pick a start and end date");
+      return;
+    }
+    const start = startOfDay(new Date(startVal + "T00:00:00"));
+    const end = startOfDay(new Date(endVal + "T00:00:00"));
+    if (end < start) {
+      toast("End date must be after start date");
+      return;
+    }
+    const numDays = Math.min(60, Math.round((end - start) / 86400000) + 1);
+
+    if (recipes.length === 0) {
+      toast("Add some recipes first");
+      return;
+    }
+
+    const today = startOfDay(new Date());
+    const days = [];
+    const usedIds = new Set(); // avoid repeats while possible
+
+    for (let i = 0; i < numDays; i++) {
+      const date = new Date(start);
+      date.setDate(date.getDate() + i);
+
+      // fresh recipes only allowed within FRESH_WINDOW_DAYS of today (either side)
+      const diffFromToday = Math.abs(Math.round((date - today) / 86400000));
+      const withinFreshWindow = diffFromToday <= FRESH_WINDOW_DAYS;
+
+      let candidates = recipes.filter(r => {
+        if (r.type === "fresh" && !withinFreshWindow) return false;
+        return true;
+      });
+
+      // prefer unused recipes first, fall back to allowing repeats if we run out
+      let pool = candidates.filter(r => !usedIds.has(r.id));
+      if (pool.length === 0) pool = candidates;
+
+      if (pool.length === 0) {
+        days.push({ date: date.toISOString(), recipeId: null });
+        continue;
+      }
+
+      const chosen = pool[Math.floor(Math.random() * pool.length)];
+      usedIds.add(chosen.id);
+      days.push({ date: date.toISOString(), recipeId: chosen.id });
+    }
+
+    plan = { startDate: startVal, endDate: endVal, days };
+    savePlan();
+    renderPlan();
+    toast("Menu generated");
+  }
+
+  function startOfDay(d) {
+    const nd = new Date(d);
+    nd.setHours(0, 0, 0, 0);
+    return nd;
+  }
+
+  function renderPlan() {
+    const list = document.getElementById("planList");
+    if (!plan || !plan.days || plan.days.length === 0) {
+      list.innerHTML = '<div class="card"><div class="empty-slot">No menu yet. Tap "Generate menu" below.</div></div>';
+      return;
+    }
+    const dow = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    list.innerHTML = plan.days.map(d => {
+      const date = new Date(d.date);
+      const recipe = recipes.find(r => r.id === d.recipeId);
+      const dateLabel = date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+      return `
+        <div class="plan-day">
+          <div class="card">
+            <div class="plan-date">${dateLabel}<span class="dow">${dow[date.getDay()]}</span></div>
+            <div class="plan-recipe">
+              ${recipe
+                ? `<div class="name">${escapeHtml(recipe.name)}</div><span class="pill ${recipe.type}">${recipe.type}</span>`
+                : '<div class="empty-slot">No matching recipe</div>'}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  let toastTimer;
+  function toast(msg) {
+    const el = document.getElementById("toast");
+    el.textContent = msg;
+    el.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove("show"), 1800);
+  }
+
+  // ---------- init ----------
+  function toDateInputValue(d) {
+    const nd = startOfDay(d);
+    return nd.getFullYear() + "-" + String(nd.getMonth() + 1).padStart(2, "0") + "-" + String(nd.getDate()).padStart(2, "0");
+  }
+  if (plan && plan.startDate && plan.endDate) {
+    document.getElementById("startDate").value = plan.startDate;
+    document.getElementById("endDate").value = plan.endDate;
+  } else {
+    const todayVal = toDateInputValue(new Date());
+    const weekEnd = new Date();
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    document.getElementById("startDate").value = todayVal;
+    document.getElementById("endDate").value = toDateInputValue(weekEnd);
+  }
+  renderRecipes();
+  renderPlan();
+
+  // ---------- PWA service worker ----------
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js").catch(() => {});
+    });
+  }
+</script>
+</body>
+</html>
